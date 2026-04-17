@@ -1,10 +1,83 @@
-function addTask(columnId) {
-  const taskText = prompt("Enter task:");
-  if (!taskText) return;
+let boardData = {
+  todo: [],
+  inprogress: [],
+  done: []
+};
 
-  const task = document.createElement("div");
-  task.className = "task";
-  task.innerText = taskText;
-
-  document.querySelector(`#${columnId} .tasks`).appendChild(task);
+// LOAD FROM STORAGE
+function loadData() {
+  const data = localStorage.getItem("kanban");
+  if (data) {
+    boardData = JSON.parse(data);
+  }
+  render();
 }
+
+// SAVE TO STORAGE
+function saveData() {
+  localStorage.setItem("kanban", JSON.stringify(boardData));
+}
+
+// RENDER UI
+function render() {
+  document.querySelectorAll(".tasks").forEach(el => el.innerHTML = "");
+
+  for (let column in boardData) {
+    const container = document.querySelector(`[data-column="${column}"] .tasks`);
+
+    boardData[column].forEach((taskText, index) => {
+      const task = document.createElement("div");
+      task.className = "task";
+      task.innerText = taskText;
+
+      task.draggable = true;
+      task.id = column + "-" + index;
+
+      task.ondragstart = drag;
+
+      container.appendChild(task);
+    });
+  }
+}
+
+// ADD TASK
+function handleKey(e, column) {
+  if (e.key === "Enter" && e.target.value.trim() !== "") {
+    boardData[column].push(e.target.value.trim());
+    e.target.value = "";
+    saveData();
+    render();
+  }
+}
+
+// DRAG
+function drag(e) {
+  e.dataTransfer.setData("text", e.target.id);
+}
+
+// ALLOW DROP
+function allowDrop(e) {
+  e.preventDefault();
+}
+
+// DROP TASK
+function drop(e) {
+  e.preventDefault();
+  const data = e.dataTransfer.getData("text");
+
+  const [fromCol, index] = data.split("-");
+  const taskText = boardData[fromCol][index];
+
+  // REMOVE FROM OLD
+  boardData[fromCol].splice(index, 1);
+
+  // ADD TO NEW
+  const newCol = e.currentTarget.parentElement.getAttribute("data-column");
+  boardData[newCol].push(taskText);
+
+  saveData();
+  render();
+}
+
+// INIT
+loadData();
